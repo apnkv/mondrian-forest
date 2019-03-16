@@ -40,14 +40,14 @@ class MondrianBlock:
         self.right = None
         self.is_leaf = True
         self.budget = budget
-        self.cost = 0
-        self.lower, self.upper = data_ranges(data)
-        self.sides = self.upper - self.lower
+        self.cost = 0 if not parent else parent.cost
 
         self.delta = None
         self.xi = None
 
         if fit:
+            self.lower, self.upper = data_ranges(data)
+            self.sides = self.upper - self.lower
             self._fit(data)
 
     # Algorithm 2
@@ -98,30 +98,42 @@ class MondrianBlock:
             else:
                 xi = uniform.rvs(loc=x[delta], scale=self.lower[delta]-x[delta])
 
-            new_parent = MondrianBlock(None, self.parent.parent, self.parent.budget, self.tree, fit=False)
-            new_parent_attrs = {
+            j_tilde = MondrianBlock(
+                data=None,
+                parent=self.parent.parent if self.parent else None,
+                budget=self.budget,
+                tree=self.tree,
+                fit=False
+            )
+            j_tilde_attrs = {
                 'delta': delta,
                 'xi': xi,
                 'cost': parent_cost + split_cost,
                 'lower': np.minimum(self.lower, x),
-                'upper': np.maximum(self.upper, x)
+                'upper': np.maximum(self.upper, x),
+                'sides': np.maximum(self.upper, x) - np.minimum(self.lower, x)
             }
-            for attr, value in new_parent_attrs:
-                setattr(new_parent, attr, value)
 
-            j_primes = MondrianBlock(np.array([x]), new_parent, self.budget, self.tree)
+            for attr, value in j_tilde_attrs.items():
+                setattr(j_tilde, attr, value)
+
+            j_primes = MondrianBlock(np.array([x]), j_tilde, self.budget, self.tree)
             if x[delta] <= xi:
-                new_parent.left = j_primes
-                new_parent.right = self
+                j_tilde.left = j_primes
+                j_tilde.right = self
             else:
-                new_parent.left = self
-                new_parent.right = j_primes
+                j_tilde.left = self
+                j_tilde.right = j_primes
 
             if self.parent:
                 if self.parent.left is self:
-                    self.parent.left = new_parent
+                    self.parent.left = j_tilde
                 elif self.parent.right is self:
-                    self.parent.right = new_parent
+                    self.parent.right = j_tilde
+
+            self.parent = j_tilde
+            if not j_tilde.parent:
+                self.tree.root = j_tilde
         else:
             self.lower = np.minimum(self.lower, x)
             self.upper = np.maximum(self.upper, x)
