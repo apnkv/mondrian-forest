@@ -14,7 +14,7 @@ def data_ranges(data):
 
 
 class MondrianTree:
-    def __init__(self, budget=np.inf):
+    def __init__(self, budget=np.inf, random_state=None):  # TODO: use random state
         self.leaf_nodes = set()
         self.budget = budget
         self.classes = None
@@ -37,6 +37,7 @@ class MondrianTree:
             self.root = MondrianBlock(X[:2], y[:2], parent=None, budget=self.budget, tree=self)
             for i in range(2, len(y)):
                 self.extend(X[i], y[i])
+            self.compute_predictive_posterior()
 
         self.fitted = True
 
@@ -233,12 +234,12 @@ class MondrianBlock:
                 X, y = self._get_feature_label_subset()
                 self._fit(X, y)
         else:
-            el = np.maximum(self.lower - x, np.zeros_like(x))
-            eu = np.maximum(x - self.upper, np.zeros_like(x))
+            el = np.maximum(self.lower - x, 0)
+            eu = np.maximum(x - self.upper, 0)
             sum_e = el + eu
 
             split_cost = expon.rvs(scale=(1 / sum_e.sum()))
-            if self._parent_cost() + split_cost < self.budget:
+            if self._parent_cost() + split_cost < self.cost:
                 delta = np.random.choice(np.arange(len(x)), p=(sum_e / sum_e.sum()))
                 if x[delta] > self.upper[delta]:
                     xi = uniform.rvs(loc=self.upper[delta], scale=x[delta] - self.upper[delta])
@@ -260,6 +261,7 @@ class MondrianBlock:
 
                 if self.parent is None:
                     self.tree.root = j_tilde
+                    print(x, 'changing root')
                 else:
                     if self is self.parent.left:
                         self.parent.left = j_tilde
@@ -284,5 +286,22 @@ class MondrianBlock:
                         child = self.right
                     child.extend(x, y)
 
-    def update_predictive_posterior(self):
-        pass
+
+class MondrianRandomForest:
+    def __init__(self, n_estimators=100, budget=np.inf, random_state=4):
+        self.n_estimators = n_estimators
+        self.estimators = []
+        self.budget = budget
+        self.random_state = random_state
+
+    def fit(self, X, y, online=False):
+        if not online:
+            for i in range(self.n_estimators):
+                self.estimators.append(MondrianTree(self.budget))
+                self.estimators[-1].fit(X, y, online=False)
+
+    def predict(self, x):
+        assert len(x.shape) == 1
+
+        predictions = np.zeros((self.n_estimators, len(self.estimators[0].classes)))
+        return predictions.mean(axis=0)
