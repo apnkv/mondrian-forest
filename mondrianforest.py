@@ -18,15 +18,88 @@ class MondrianTree:
     def __init__(self, budget=np.inf):
         self.leaf_nodes = set()
         self.budget = budget
+        self.classes = None
+        self.class_indices = None
+        self.regions = 0
         self.root = None
 
-    # Algorithm 1
-    def fit(self, X, y=None):
-        self.root = MondrianBlock(X, None, self.budget, self)
+    # Algorithm 1 + online option
+    def fit(self, X, y, simulate_online=False):
+        self.classes = np.unique(y)
+        self.class_indices = {cls: i for i, cls in enumerate(self.classes)}
+        if not simulate_online:
+            self.root = MondrianBlock(X, None, self.budget, self)
+            self.batch_initialize_posterior_counts(X, y)
+            self.compute_predictive_posterior()
+        else:
+            self.root = MondrianBlock(X[:2], None, self.budget, self)
+            self.batch_initialize_posterior_counts(X[:2], y[:2])
+            for i in range(2, len(X)):
+                self.extend(X[i], y[i])
 
     # Algorithm 3
-    def extend(self, x, y=None):
-        self.root.extend(x, y)
+    def extend(self, x, y):
+        x_leaf = self.root.extend(x, y)
+        x_leaf.update_posterior_counts(y)
+
+    # Algorithm 5
+    def batch_initialize_posterior_counts(self, X, y):
+        queue = list(self.leaf_nodes)
+        while queue:
+            node = queue.pop()
+            print('init posterior,', node)
+            if not node.posterior_initialized:
+                node_indices = np.all(X >= node.lower, axis=1) & np.all(X <= node.upper, axis=1)
+                labels_in_node = y[node_indices]
+                label_distribution = np.zeros_like(self.classes)
+
+                if node.is_leaf:
+                    for i, cls in enumerate(self.classes):
+                        label_distribution[i] = np.count_nonzero(labels_in_node == cls)
+                else:
+                    label_distribution += node.left.label_distribution if node.left else 0
+                    label_distribution += node.right.label_distribution if node.right else 0
+
+                node.label_distribution = label_distribution
+                node.tables = np.minimum(label_distribution, 1)
+                node.posterior_initialized = True
+                if not node.parent:
+                    break
+                else:
+                    queue = [node.parent] + queue
+
+    # Algotithm 7
+    def compute_predictive_posterior(self):
+        queue = [self.root]
+        while queue:
+            node = queue.pop()
+            if node is self.root:
+                parent_posterior = np.ones_like(self.classes) / len(self.classes)  # H
+            else:
+                parent_posterior = node.parent.posterior_predictive
+
+            node_c = node.label_distribution
+            node_tab = node.tables
+            discount = node.discount
+
+            node.posterior_predictive = (node_c - discount * node_tab
+                                         + discount * np.sum(node_tab) * parent_posterior) / np.sum(node_c)
+
+            if node.left:
+                queue = [node.left] + queue
+            if node.right:
+                queue = [node.right] + queue
+
+    def leaf(self, x):
+        node = self.root
+        while not node.is_leaf:
+            if any(x < node.lower) or any(x > node.upper):
+                return None
+            if x[node.delta] <= node.delta:
+                node = node.left
+            else:
+                node = node.right
+        return node
 
 
 class MondrianBlock:
@@ -34,6 +107,8 @@ class MondrianBlock:
     def __init__(self, data, parent, budget, tree: MondrianTree = None, fit=True):
         assert tree
         self.tree = tree
+        self.number = tree.regions
+        tree.regions += 1
 
         self.parent = parent
         self.left = None
@@ -41,6 +116,12 @@ class MondrianBlock:
         self.is_leaf = True
         self.budget = budget
         self.cost = 0 if not parent else parent.cost
+        self.discount = 0
+
+        self.label_distribution = np.zeros_like(tree.classes)
+        self.tables = np.zeros_like(tree.classes)  # "Chinese restaurants" notation from the paper
+        self.posterior_predictive = np.zeros_like(tree.classes)
+        self.posterior_initialized = False
 
         self.delta = None
         self.xi = None
@@ -49,6 +130,9 @@ class MondrianBlock:
             self.lower, self.upper = data_ranges(data)
             self.sides = self.upper - self.lower
             self._fit(data)
+
+    def __repr__(self):
+        return f'MB {self.number}{" (l)" if self.is_leaf else ""}'
 
     # Algorithm 2
     def _fit(self, data):
@@ -82,6 +166,8 @@ class MondrianBlock:
             self.cost = self.budget
             self.is_leaf = True
             self.tree.leaf_nodes.add(self)
+
+        self.discount = np.exp(-(self.cost - parent_cost))
 
     # Algorithm 4
     def extend(self, x, y=None):
@@ -134,6 +220,8 @@ class MondrianBlock:
             self.parent = j_tilde
             if not j_tilde.parent:
                 self.tree.root = j_tilde
+
+            return j_primes  # ought to be the leaf of x
         else:
             self.lower = np.minimum(self.lower, x)
             self.upper = np.maximum(self.upper, x)
@@ -142,7 +230,26 @@ class MondrianBlock:
                     child = self.left
                 else:
                     child = self.right
-                child.extend(x, y)
+                return child.extend(x, y)
+
+    # Algorithm 6
+    def update_posterior_counts(self, y):
+        label_index = self.tree.class_indices[y]
+        self.label_distribution[label_index] += 1
+        current = self
+        while True:
+            if self.tables[label_index] == 1:
+                return
+            else:
+                if not current.is_leaf:
+                    current.label_distribution[label_index] = 0
+                    current.label_distribution[label_index] += self.left.tables[label_index] if self.left else 0
+                    current.label_distribution[label_index] += self.right.tables[label_index] if self.right else 0
+                    current.tables[label_index] = min(current.label_distribution[label_index], 1)
+                    if current is self.tree.root:
+                        return
+                    else:
+                        current = current.parent
 
 
 def plot_mondrian_tree(tree):
