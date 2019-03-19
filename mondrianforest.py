@@ -6,15 +6,12 @@ from scipy.stats import expon, truncexpon, uniform
 # https://arxiv.org/pdf/1406.2673.pdf
 
 
-GAMMA = 20
-
-
 def data_ranges(data):
     return np.min(data, axis=0), np.max(data, axis=0)
 
 
 class MondrianTree:
-    def __init__(self, budget=np.inf, random_state=None):  # TODO: use random state
+    def __init__(self, budget=np.inf, random_state=None, gamma=20):  # TODO: use random state
         self.leaf_nodes = set()
         self.budget = budget
         self.classes = None
@@ -22,6 +19,7 @@ class MondrianTree:
         self.root = None
         self.X = None
         self.y = None
+        self.gamma = gamma
         self.fitted = False
 
     # Algorithm 1 + fully online option
@@ -77,7 +75,7 @@ class MondrianTree:
             eta = (np.maximum(x - current.upper, 0) + np.maximum(current.lower - x, 0)).sum()
             psjx = -np.expm1(-eta * cost_difference)
             if psjx > 0:
-                expected_discount = (eta / (eta + GAMMA)) * (-np.expm1(-(eta + GAMMA) * cost_difference)) \
+                expected_discount = (eta / (eta + self.gamma)) * (-np.expm1(-(eta + self.gamma) * cost_difference)) \
                            / (-np.expm1(-eta * cost_difference))
 
                 class_counts = tables = np.minimum(current.class_counts, 1)
@@ -198,7 +196,7 @@ class MondrianBlock:
             self.tree.leaf_nodes.add(self)
             self._initialize_posterior_counts(X, y)
 
-        self.discount = np.exp(-GAMMA * (self.cost - self._parent_cost()))
+        self.discount = np.exp(-self.tree.gamma * (self.cost - self._parent_cost()))
 
     def _get_subset_indices(self):
         return np.all(self.tree.X >= self.lower, axis=1) & np.all(self.tree.X <= self.upper, axis=1)
