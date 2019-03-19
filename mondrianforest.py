@@ -6,7 +6,7 @@ from scipy.stats import expon, truncexpon, uniform
 # https://arxiv.org/pdf/1406.2673.pdf
 
 
-GAMMA = 1
+GAMMA = 20
 
 
 def data_ranges(data):
@@ -299,6 +299,10 @@ class MondrianRandomForest:
             for i in range(self.n_estimators):
                 self.estimators.append(MondrianTree(self.budget))
                 self.estimators[-1].fit(X, y, online=False)
+
+    def extend(self, x, y):
+        for i, estimator in enumerate(self.estimators):
+            self.estimators[i].extend(x, y)
 
     def predict(self, x):
         assert len(x.shape) == 1
