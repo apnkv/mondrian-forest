@@ -221,12 +221,16 @@ class MondrianBlock:
     # Algorithm 10
     def extend(self, x, y):
         labels = self._get_label_subset()
+        print('labels', labels)
         if len(labels) <= 0 or np.all(labels == labels[0]):  # all labels identical
             self.lower = np.minimum(self.lower, x)
             self.upper = np.maximum(self.upper, x)
             self.tree.X = np.vstack((self.tree.X, x))  # TODO: we possibly don't have to
             self.tree.y = np.hstack((self.tree.y, y))
+            print('y', y)
+            print('labels 0', labels[0])
             if y == labels[0]:
+                print('??')
                 self._update_posterior_counts(y)
                 return
             else:
