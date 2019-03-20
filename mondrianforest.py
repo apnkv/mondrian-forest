@@ -53,6 +53,8 @@ class MondrianTree:
             tables = node.tables
             discount = node.discount
 
+            print('class', class_counts)
+
             node.posterior_predictive = (class_counts - discount * tables
                                          + discount * np.sum(tables) * parent_posterior) / np.sum(class_counts)
 
@@ -232,11 +234,21 @@ class MondrianBlock:
                 X, y = self._get_feature_label_subset()
                 self._fit(X, y)
         else:
+            print('x', x)
+            print('lower', self.lower)
+            print('upper', self.upper)
+
             el = np.maximum(self.lower - x, 0)
             eu = np.maximum(x - self.upper, 0)
             sum_e = el + eu
+            print('el', el)
+            print('eu', eu)
 
-            split_cost = expon.rvs(scale=(1 / sum_e.sum()))
+            if sum_e.sum() == 0:
+                split_cost = np.inf
+            else:
+                split_cost = expon.rvs(scale=(1 / sum_e.sum()))
+
             if self._parent_cost() + split_cost < self.cost:
                 delta = np.random.choice(np.arange(len(x)), p=(sum_e / sum_e.sum()))
                 if x[delta] > self.upper[delta]:
