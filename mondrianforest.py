@@ -45,11 +45,15 @@ def data_ranges(data):
 
 
 class MondrianTree:
-    def __init__(self, budget=np.inf, random_state=None, gamma=20, max_depth=None):  # TODO: use random state
+    def __init__(self, budget=np.inf, random_state=None, gamma=20, max_depth=None, classes=None):
+        # TODO: use random state
         self.leaf_nodes = set()
         self.budget = budget
-        self.classes = None
-        self.class_indices = None
+        self.classes = classes
+        if classes is not None:
+            self.class_indices = {cls: i for i, cls in enumerate(self.classes)}
+        else:
+            self.class_indices = None
         self.root = None
         self.X = None
         self.y = None
@@ -67,8 +71,9 @@ class MondrianTree:
         self.gamma = 10 * X.shape[1]
         self.data_seen = 2
         self.data_len = len(X)
-        self.classes = np.unique(y)
-        self.class_indices = {cls: i for i, cls in enumerate(self.classes)}
+        if self.classes is None:
+            self.classes = np.unique(y)
+            self.class_indices = {cls: i for i, cls in enumerate(self.classes)}
         if not online:
             self.root = MondrianBlock(X, y, parent=None, budget=self.budget, tree=self)
             self.compute_predictive_posterior()
