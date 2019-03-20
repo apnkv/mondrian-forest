@@ -53,6 +53,8 @@ class MondrianTree:
         self.root = None
         self.X = None
         self.y = None
+        self.data_seen = 0
+        self.data_len = 0
         self.gamma = gamma
         self.max_depth = max_depth
         self.fitted = False
@@ -61,6 +63,8 @@ class MondrianTree:
     def fit(self, X, y, online=False):
         self.X = X
         self.y = y
+        self.data_seen = 2
+        self.data_len = len(X)
         self.classes = np.unique(y)
         self.class_indices = {cls: i for i, cls in enumerate(self.classes)}
         if not online:
@@ -244,27 +248,32 @@ class MondrianBlock:
 
         self.discount = np.exp(-self.tree.gamma * (self.cost - self._parent_cost()))
 
-    def _get_subset_indices(self):
-        return np.all(self.tree.X >= self.lower, axis=1) & np.all(self.tree.X <= self.upper, axis=1)
+    def _get_subset_indices(self, online=False):
+        indices = np.full_like(self.tree.X[:, 0], False)
+        length = self.tree.data_seen if online else len(self.tree.X)
+        indices[:length] = np.all(self.tree.X[:length] >= self.lower, axis=1) \
+                           & np.all(self.tree.X[:length] <= self.upper, axis=1)
+        return indices.astype(np.bool)
 
-    def _get_label_subset(self, indices=None):
+    def _get_label_subset(self, indices=None, online=False):
         if indices is None:
-            indices = self._get_subset_indices()
+            indices = self._get_subset_indices(online)
         return self.tree.y[indices]
 
-    def _get_feature_subset(self, indices=None):
+    def _get_feature_subset(self, indices=None, online=False):
         if indices is None:
-            indices = self._get_subset_indices()
+            indices = self._get_subset_indices(online)
         return self.tree.X[indices]
 
-    def _get_feature_label_subset(self, indices=None):
+    def _get_feature_label_subset(self, indices=None, online=False):
         if indices is None:
-            indices = self._get_subset_indices()
-        return self._get_feature_subset(indices), self._get_label_subset(indices)
+            indices = self._get_subset_indices(online)
+        return self._get_feature_subset(indices, online), self._get_label_subset(indices, online)
 
     # Algorithm 10
     def extend(self, x, y):
-        labels = self._get_label_subset()
+        self.tree.data_seen += 1
+        labels = self._get_label_subset(online=True)
         print('labels', labels)
         if len(labels) <= 0 or np.all(labels == labels[0]):  # all labels identical
             self.lower = np.minimum(self.lower, x)
@@ -279,7 +288,7 @@ class MondrianBlock:
                 return
             else:
                 self.tree.leaf_nodes.remove(self)
-                X, y = self._get_feature_label_subset()
+                X, y = self._get_feature_label_subset(online=True)
                 self._fit(X, y)
         else:
             print('x', x)
