@@ -63,6 +63,7 @@ class MondrianTree:
     def fit(self, X, y, online=False, plot_steps=False):
         self.X = X
         self.y = y
+        self.gamma = 10 * X.shape[1]
         self.data_seen = 2
         self.data_len = len(X)
         self.classes = np.unique(y)
@@ -116,10 +117,10 @@ class MondrianTree:
         while True:
             cost_difference = current.cost - current._parent_cost()
             eta = (np.maximum(x - current.upper, 0) + np.maximum(current.lower - x, 0)).sum()
-            psjx = -np.expm1(-eta * cost_difference)
+            psjx = -np.expm1(-eta * cost_difference) if cost_difference < np.inf else 1
             if psjx > 0:
                 expected_discount = (eta / (eta + self.gamma)) * (-np.expm1(-(eta + self.gamma) * cost_difference)) \
-                           / (-np.expm1(-eta * cost_difference))
+                           / psjx
 
                 class_counts = tables = np.minimum(current.class_counts, 1)
 
@@ -286,10 +287,7 @@ class MondrianBlock:
             eu = np.maximum(x - self.upper, 0)
             sum_e = el + eu
 
-            if sum_e.sum() == 0:
-                split_cost = np.inf
-            else:
-                split_cost = expon.rvs(scale=(1 / sum_e.sum()))
+            split_cost = expon.rvs(scale=(1 / (sum_e.sum() + 1e-9)))
 
             if self._parent_cost() + split_cost < self.cost:
                 delta = np.random.choice(np.arange(len(x)), p=(sum_e / sum_e.sum()))
@@ -350,17 +348,22 @@ class MondrianRandomForest:
         self.random_state = random_state
 
     def fit(self, X, y, online=False):
-        if not online:
-            for i in range(self.n_estimators):
-                self.estimators.append(MondrianTree(self.budget))
-                self.estimators[-1].fit(X, y, online=False)
+        for i in range(self.n_estimators):
+            self.estimators.append(MondrianTree(self.budget))
+            self.estimators[-1].fit(X, y, online=online)
 
     def extend(self, x, y):
         for i, estimator in enumerate(self.estimators):
             self.estimators[i].extend(x, y)
 
-    def predict(self, x):
-        assert len(x.shape) == 1
+    def predict_proba(self, X):
+        _preds = np.zeros((X.shape[0], len(self.estimators[0].classes)))
+        for j, x in enumerate(X):
+            predictions = np.zeros((self.n_estimators, len(self.estimators[0].classes)))
+            for i, tree in enumerate(self.estimators):
+                predictions[i] = tree.predict(x)
+            _preds[j] = predictions.mean(axis=0)
+        return _preds
 
-        predictions = np.zeros((self.n_estimators, len(self.estimators[0].classes)))
-        return predictions.mean(axis=0)
+    def predict(self, X):
+        return np.argmax(self.predict_proba(X), axis=1)
