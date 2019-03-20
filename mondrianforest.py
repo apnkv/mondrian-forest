@@ -11,7 +11,7 @@ def data_ranges(data):
 
 
 class MondrianTree:
-    def __init__(self, budget=np.inf, random_state=None, gamma=20):  # TODO: use random state
+    def __init__(self, budget=np.inf, random_state=None, gamma=20, max_depth=None):  # TODO: use random state
         self.leaf_nodes = set()
         self.budget = budget
         self.classes = None
@@ -20,6 +20,7 @@ class MondrianTree:
         self.X = None
         self.y = None
         self.gamma = gamma
+        self.max_depth = max_depth
         self.fitted = False
 
     # Algorithm 1 + fully online option
@@ -189,10 +190,12 @@ class MondrianBlock:
             self.is_leaf = False
             # we first create unfitted blocks and then fit because otherwise self.left and self.right
             # may be accessed in ._initialize_posterior_counts before being assigned
-            self.left = MondrianBlock(X_left, y_left, budget=self.budget, parent=self, tree=self.tree, fit=False)
-            self.left._fit(X_left, y_left)
-            self.right = MondrianBlock(X_right, y_right, budget=self.budget, parent=self, tree=self.tree, fit=False)
-            self.right._fit(X_right, y_right)
+            if len(y_left):
+                self.left = MondrianBlock(X_left, y_left, budget=self.budget, parent=self, tree=self.tree, fit=False)
+                self.left._fit(X_left, y_left)
+            if len(y_right):
+                self.right = MondrianBlock(X_right, y_right, budget=self.budget, parent=self, tree=self.tree, fit=False)
+                self.right._fit(X_right, y_right)
         else:
             self.cost = self.budget
             self.tree.leaf_nodes.add(self)
@@ -283,7 +286,8 @@ class MondrianBlock:
                         self.parent.right = j_tilde
 
                 j_primes = MondrianBlock(X=np.array([x]), y=np.array([y]), budget=self.budget,
-                                         parent=j_tilde, tree=self.tree)
+                                         parent=j_tilde, tree=self.tree, fit=False)
+                j_primes._fit(np.array([x]), np.array([y]))
                 if x[delta] > xi:
                     j_tilde.left = self
                     j_tilde.right = j_primes
