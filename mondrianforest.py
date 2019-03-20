@@ -345,6 +345,8 @@ class MondrianBlock:
                 else:
                     j_tilde.left = j_primes
                     j_tilde.right = self
+                self.parent = j_tilde
+                j_primes.parent = j_tilde
 
                 j_primes._fit(np.array([x]), np.array([y]))
             else:
