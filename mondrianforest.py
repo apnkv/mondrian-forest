@@ -152,7 +152,11 @@ class MondrianBlock:
         self.class_counts[class_index] += 1
         current = self
         while True:
+            print(current is current.tree.root, current.parent is None, current.lower, current.upper)
             if current.tables[class_index] == 1:
+                if current.parent.tables[class_index] != 1:
+                    print('WARNING', current.lower, current.upper, current.parent.lower, current.parent.upper,
+                          current is current.tree.root, current.parent is current.tree.root)
                 return
             else:
                 if not current.is_leaf:
@@ -161,6 +165,7 @@ class MondrianBlock:
                     current.class_counts[class_index] = l_table + r_table
                 current.tables[class_index] = np.minimum(current.class_counts[class_index], 1)
                 if current.parent is None:
+                    print('arrived to root')
                     return
                 else:
                     current = current.parent
@@ -287,13 +292,14 @@ class MondrianBlock:
 
                 j_primes = MondrianBlock(X=np.array([x]), y=np.array([y]), budget=self.budget,
                                          parent=j_tilde, tree=self.tree, fit=False)
-                j_primes._fit(np.array([x]), np.array([y]))
                 if x[delta] > xi:
                     j_tilde.left = self
                     j_tilde.right = j_primes
                 else:
                     j_tilde.left = j_primes
                     j_tilde.right = self
+
+                j_primes._fit(np.array([x]), np.array([y]))
             else:
                 self.lower = np.minimum(self.lower, x)
                 self.upper = np.maximum(self.upper, x)
