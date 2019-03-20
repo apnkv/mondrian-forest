@@ -57,6 +57,7 @@ class MondrianTree:
         self.data_len = 0
         self.gamma = gamma
         self.max_depth = max_depth
+        self.random_state = random_state
         self.fitted = False
 
     # Algorithm 1 + fully online option
@@ -82,6 +83,11 @@ class MondrianTree:
             self.compute_predictive_posterior()
 
         self.fitted = True
+
+    def partial_fit(self, X, y):
+        for i in range(len(y)):
+            self.extend(X[i], y[i])
+        self.compute_predictive_posterior()
 
     # Algorithm 7
     def compute_predictive_posterior(self):
@@ -351,6 +357,10 @@ class MondrianRandomForest:
         for i in range(self.n_estimators):
             self.estimators.append(MondrianTree(self.budget))
             self.estimators[-1].fit(X, y, online=online)
+
+    def partial_fit(self, X, y):
+        for i in range(self.n_estimators):
+            self.estimators[i].partial_fit(X, y)
 
     def extend(self, x, y):
         for i, estimator in enumerate(self.estimators):
