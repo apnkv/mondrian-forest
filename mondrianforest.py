@@ -75,6 +75,7 @@ class MondrianTree:
             plot_2d_mondrian_tree(self, X[:2], y[:2], xlim=(0, 1), ylim=(0, 1))
             for i in range(2, len(y)):
                 self.extend(X[i], y[i])
+                print()
                 plot_2d_mondrian_tree(self, X[:i+1], y[:i+1], xlim=(0, 1), ylim=(0, 1))
             self.compute_predictive_posterior()
 
@@ -307,6 +308,7 @@ class MondrianBlock:
                 split_cost = expon.rvs(scale=(1 / sum_e.sum()))
 
             if self._parent_cost() + split_cost < self.cost:
+                print('par cost + split cost < cost')
                 delta = np.random.choice(np.arange(len(x)), p=(sum_e / sum_e.sum()))
                 if x[delta] > self.upper[delta]:
                     xi = uniform.rvs(loc=self.upper[delta], scale=x[delta] - self.upper[delta])
@@ -348,6 +350,8 @@ class MondrianBlock:
             else:
                 self.lower = np.minimum(self.lower, x)
                 self.upper = np.maximum(self.upper, x)
+                print('updater lower', self.lower)
+                print('updated upper', self.upper)
                 if not self.is_leaf:
                     if x[self.delta] <= self.xi:
                         child = self.left
