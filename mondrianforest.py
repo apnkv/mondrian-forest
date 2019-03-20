@@ -1,9 +1,43 @@
 import numpy as np
 from scipy.stats import expon, truncexpon, uniform
+from matplotlib import pyplot as plt
 
 
 # Based on Mondrian Forests: Efficient Online Random Forests
 # https://arxiv.org/pdf/1406.2673.pdf
+
+
+def plot_2d_mondrian_block(block):
+    plt.hlines([block.lower[1], block.upper[1]],
+               block.lower[0], block.upper[0],
+               linestyles='dashed', alpha=0.3)
+    plt.vlines([block.lower[0], block.upper[0]],
+               block.lower[1], block.upper[1],
+               linestyles='dashed', alpha=0.3)
+    if not block.is_leaf:
+        if block.delta == 0:
+            plt.vlines(block.xi, block.lower[1], block.upper[1], color='red', alpha=0.7)
+        elif block.delta == 1:
+            plt.hlines(block.xi, block.lower[0], block.upper[0], color='red', alpha=0.7)
+    if block.left:
+        plot_2d_mondrian_block(block.left)
+    if block.right:
+        plot_2d_mondrian_block(block.right)
+
+
+def plot_2d_mondrian_tree(tree, X, y, xlim=None, ylim=None, **kwargs):
+    xmin, xmax = (np.min(X[:, 0]), np.max(X[:, 0])) if not xlim else xlim
+    xlen = xmax - xmin
+    x_margin = 0 if xlim else 0.05 * xlen
+    ymin, ymax = (np.min(X[:, 1]), np.max(X[:, 1])) if not ylim else ylim
+    ylen = ymax - ymin
+    y_margin = 0 if ylim else 0.05 * ylen
+
+    plt.figure(**kwargs)
+    plt.xlim(xmin - x_margin, xmax + x_margin)
+    plt.ylim(ymin - y_margin, ymax + y_margin)
+    plt.scatter(X[:, 0], X[:, 1], c=y)
+    plot_2d_mondrian_block(tree.root)
 
 
 def data_ranges(data):
@@ -34,8 +68,10 @@ class MondrianTree:
             self.compute_predictive_posterior()
         else:
             self.root = MondrianBlock(X[:2], y[:2], parent=None, budget=self.budget, tree=self)
+            plot_2d_mondrian_tree(self, X[:2], y[:2], xlim=(0, 1), ylim=(0, 1))
             for i in range(2, len(y)):
                 self.extend(X[i], y[i])
+                plot_2d_mondrian_tree(self, X[:i+1], y[:i+1], xlim=(0, 1), ylim=(0, 1))
             self.compute_predictive_posterior()
 
         self.fitted = True
