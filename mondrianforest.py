@@ -11,7 +11,7 @@ def data_ranges(data):
 
 
 class MondrianTree:
-    def __init__(self, budget=np.inf, random_state=None, gamma=20):  # TODO: use random state
+    def __init__(self, budget=np.inf, random_state=None, gamma=20, max_depth=None):  # TODO: use random state
         self.leaf_nodes = set()
         self.budget = budget
         self.classes = None
@@ -20,6 +20,7 @@ class MondrianTree:
         self.X = None
         self.y = None
         self.gamma = gamma
+        self.max_depth = max_depth
         self.fitted = False
 
     # Algorithm 1 + fully online option
@@ -52,6 +53,8 @@ class MondrianTree:
             class_counts = node.class_counts
             tables = node.tables
             discount = node.discount
+
+            print('class', class_counts)
 
             node.posterior_predictive = (class_counts - discount * tables
                                          + discount * np.sum(tables) * parent_posterior) / np.sum(class_counts)
@@ -149,7 +152,11 @@ class MondrianBlock:
         self.class_counts[class_index] += 1
         current = self
         while True:
+            print(current is current.tree.root, current.parent is None, current.lower, current.upper)
             if current.tables[class_index] == 1:
+                if current.parent.tables[class_index] != 1:
+                    print('WARNING', current.lower, current.upper, current.parent.lower, current.parent.upper,
+                          current is current.tree.root, current.parent is current.tree.root)
                 return
             else:
                 if not current.is_leaf:
@@ -158,6 +165,7 @@ class MondrianBlock:
                     current.class_counts[class_index] = l_table + r_table
                 current.tables[class_index] = np.minimum(current.class_counts[class_index], 1)
                 if current.parent is None:
+                    print('arrived to root')
                     return
                 else:
                     current = current.parent
@@ -187,10 +195,12 @@ class MondrianBlock:
             self.is_leaf = False
             # we first create unfitted blocks and then fit because otherwise self.left and self.right
             # may be accessed in ._initialize_posterior_counts before being assigned
-            self.left = MondrianBlock(X_left, y_left, budget=self.budget, parent=self, tree=self.tree, fit=False)
-            self.left._fit(X_left, y_left)
-            self.right = MondrianBlock(X_right, y_right, budget=self.budget, parent=self, tree=self.tree, fit=False)
-            self.right._fit(X_right, y_right)
+            if len(y_left):
+                self.left = MondrianBlock(X_left, y_left, budget=self.budget, parent=self, tree=self.tree, fit=False)
+                self.left._fit(X_left, y_left)
+            if len(y_right):
+                self.right = MondrianBlock(X_right, y_right, budget=self.budget, parent=self, tree=self.tree, fit=False)
+                self.right._fit(X_right, y_right)
         else:
             self.cost = self.budget
             self.tree.leaf_nodes.add(self)
@@ -219,12 +229,16 @@ class MondrianBlock:
     # Algorithm 10
     def extend(self, x, y):
         labels = self._get_label_subset()
+        print('labels', labels)
         if len(labels) <= 0 or np.all(labels == labels[0]):  # all labels identical
             self.lower = np.minimum(self.lower, x)
             self.upper = np.maximum(self.upper, x)
             self.tree.X = np.vstack((self.tree.X, x))  # TODO: we possibly don't have to
             self.tree.y = np.hstack((self.tree.y, y))
+            print('y', y)
+            print('labels 0', labels[0])
             if y == labels[0]:
+                print('??')
                 self._update_posterior_counts(y)
                 return
             else:
@@ -232,11 +246,21 @@ class MondrianBlock:
                 X, y = self._get_feature_label_subset()
                 self._fit(X, y)
         else:
+            print('x', x)
+            print('lower', self.lower)
+            print('upper', self.upper)
+
             el = np.maximum(self.lower - x, 0)
             eu = np.maximum(x - self.upper, 0)
             sum_e = el + eu
+            print('el', el)
+            print('eu', eu)
 
-            split_cost = expon.rvs(scale=(1 / sum_e.sum()))
+            if sum_e.sum() == 0:
+                split_cost = np.inf
+            else:
+                split_cost = expon.rvs(scale=(1 / sum_e.sum()))
+
             if self._parent_cost() + split_cost < self.cost:
                 delta = np.random.choice(np.arange(len(x)), p=(sum_e / sum_e.sum()))
                 if x[delta] > self.upper[delta]:
@@ -267,13 +291,15 @@ class MondrianBlock:
                         self.parent.right = j_tilde
 
                 j_primes = MondrianBlock(X=np.array([x]), y=np.array([y]), budget=self.budget,
-                                         parent=j_tilde, tree=self.tree)
+                                         parent=j_tilde, tree=self.tree, fit=False)
                 if x[delta] > xi:
                     j_tilde.left = self
                     j_tilde.right = j_primes
                 else:
                     j_tilde.left = j_primes
                     j_tilde.right = self
+
+                j_primes._fit(np.array([x]), np.array([y]))
             else:
                 self.lower = np.minimum(self.lower, x)
                 self.upper = np.maximum(self.upper, x)
