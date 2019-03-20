@@ -20,59 +20,59 @@ def run_method_on_dataset(method, dataset, n_iter, n_batches, n_estimators, max_
 
     for i in range(n_iter):
 
-        if method == 'classical_rf_refit':
+        if method == 'classical_full_data':
             clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=-1)
             fit_time, train_acc, test_acc = classical_rf_refit(clf, dataset, n_batches)
 
-        elif method == 'classical_rf_window_1':
+        elif method == 'classical_window_1':
             clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=-1)
             fit_time, train_acc, test_acc = classical_rf_window(clf, dataset, n_batches, h=1)
 
-        elif method == 'classical_rf_window_3':
+        elif method == 'classical_window_3':
             clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=-1)
             fit_time, train_acc, test_acc = classical_rf_window(clf, dataset, n_batches, h=3)
 
-        elif method == 'classical_rf_window_5':
+        elif method == 'classical_window_5':
             clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=-1)
             fit_time, train_acc, test_acc = classical_rf_window(clf, dataset, n_batches, h=5)
 
-        elif method == 'classical_rf_increment_frac_0.2':
+        elif method == 'classical_increment_frac_0.2':
             clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, warm_start=True)
             fit_time, train_acc, test_acc = classical_rf_incremental(clf, dataset, n_batches, new_frac=0.2)
 
-        elif method == 'classical_rf_increment_frac_0.5':
+        elif method == 'classical_increment_frac_0.5':
             clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, warm_start=True)
             fit_time, train_acc, test_acc = classical_rf_incremental(clf, dataset, n_batches, new_frac=0.5)
 
-        elif method == 'extratrees_rf_refit':
+        elif method == 'extratrees_full_data':
             clf = ExtraTreesClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=-1)
             fit_time, train_acc, test_acc = classical_rf_refit(clf, dataset, n_batches)
 
-        elif method == 'extratrees_rf_window_1':
+        elif method == 'extratrees_window_1':
             clf = ExtraTreesClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=-1)
             fit_time, train_acc, test_acc = classical_rf_window(clf, dataset, n_batches, h=1)
 
-        elif method == 'extratrees_rf_window_3':
+        elif method == 'extratrees_window_3':
             clf = ExtraTreesClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=-1)
             fit_time, train_acc, test_acc = classical_rf_window(clf, dataset, n_batches, h=3)
 
-        elif method == 'extratrees_rf_window_5':
+        elif method == 'extratrees_window_5':
             clf = ExtraTreesClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=-1)
             fit_time, train_acc, test_acc = classical_rf_window(clf, dataset, n_batches, h=5)
 
-        elif method == 'extratrees_rf_increment_frac_0.2':
+        elif method == 'extratrees_increment_frac_0.2':
             clf = ExtraTreesClassifier(n_estimators=n_estimators, max_depth=max_depth, warm_start=True)
             fit_time, train_acc, test_acc = classical_rf_incremental(clf, dataset, n_batches, new_frac=0.2)
 
-        elif method == 'extratrees_rf_increment_frac_0.5':
+        elif method == 'extratrees_increment_frac_0.5':
             clf = ExtraTreesClassifier(n_estimators=n_estimators, max_depth=max_depth, warm_start=True)
             fit_time, train_acc, test_acc = classical_rf_incremental(clf, dataset, n_batches, new_frac=0.5)
 
-        elif method == 'mondrian_rf_skgarden':
+        elif method == 'mondrian_skgarden':
             clf = MondrianForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
             fit_time, train_acc, test_acc = mondrian_rf_skgarden(clf, dataset, n_batches)
 
-        elif method == 'mondrian_rf_our':
+        elif method == 'mondrian_our':
             clf = OurMondrianForestClassifier(n_estimators=n_estimators, budget=max_depth)
             fit_time, train_acc, test_acc = mondrian_rf_our(clf, dataset, n_batches)
 
@@ -89,20 +89,20 @@ def run_method_on_dataset(method, dataset, n_iter, n_batches, n_estimators, max_
 
 def run_all_methods_on_dataset(dataset, name, n_iter, n_batches, n_estimators, max_depth):
     methods = [
-        # 'classical_rf_refit',
-        # 'classical_rf_window_1',
-        # 'classical_rf_window_3',
-        # 'classical_rf_window_5',
-        # 'classical_rf_increment_frac_0.2',
-        # 'classical_rf_increment_frac_0.5',
-        # 'extratrees_rf_refit',
-        # 'extratrees_rf_window_1',
-        # 'extratrees_rf_window_3',
-        # 'extratrees_rf_window_5',
-        # 'extratrees_rf_increment_frac_0.2',
-        # 'extratrees_rf_increment_frac_0.5',
-        'mondrian_rf_skgarden',
-        'mondrian_rf_our'
+        'classical_full_data',
+        'classical_window_1',
+        'classical_window_3',
+        'classical_window_5',
+        'classical_increment_frac_0.2',
+        'classical_increment_frac_0.5',
+        'extratrees_full_data',
+        # 'extratrees_window_1',
+        # 'extratrees_window_3',
+        # 'extratrees_window_5',
+        'extratrees_increment_frac_0.2',
+        'extratrees_increment_frac_0.5',
+        'mondrian_skgarden',
+        'mondrian_our'
     ]
 
     fig, ax = plt.subplots(1, 3, figsize=(25, 7))
