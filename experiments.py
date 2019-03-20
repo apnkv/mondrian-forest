@@ -125,7 +125,7 @@ def run_all_methods_on_dataset(dataset, name, n_iter, n_batches, n_estimators, m
         ax[0].set(xlabel='fraction of training data', ylabel='test accuracy', title='Test accuracy and fraction of data')
 
         ax[1].plot(mean_fit_time, mean_test_acc, label=method, marker='o', linewidth=4)
-        ax[1].set(xlabel='training time (seconds)', ylabel='test accuracy', title='Test accuracy and training time')
+        ax[1].set(xlabel='training time (log seconds)', ylabel='test accuracy', title='Test accuracy and training time')
         ax[1].set_xscale('log')
 
         ax[2].plot([0], [0], label=method)
