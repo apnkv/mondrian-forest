@@ -74,11 +74,10 @@ def classical_rf_incremental(clf, dataset, n_batches, new_frac=0.2):
     n_new = int(new_frac * clf.n_estimators)
 
     for i in range(n_batches):
-        start = max(0, i * batch_size)
         end = min((i + 1) * batch_size, n_samples)
 
-        X_batch = X_train[start:end]
-        y_batch = y_train[start:end]
+        X_batch = X_train[:end]
+        y_batch = y_train[:end]
 
         t = time.time()
         clf.fit(X_batch, y_batch)

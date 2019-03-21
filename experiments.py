@@ -72,7 +72,7 @@ def run_method_on_dataset(method, dataset, n_iter, n_batches, n_estimators, max_
             clf = MondrianForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
             fit_time, train_acc, test_acc = mondrian_rf_skgarden(clf, dataset, n_batches)
 
-        elif method == 'mondrian_our':
+        elif method == 'mondrian':
             clf = OurMondrianForestClassifier(n_estimators=n_estimators, budget=max_depth)
             fit_time, train_acc, test_acc = mondrian_rf_our(clf, dataset, n_batches)
 
@@ -101,8 +101,8 @@ def run_all_methods_on_dataset(dataset, name, n_iter, n_batches, n_estimators, m
         # 'extratrees_window_5',
         'extratrees_increment_frac_0.2',
         'extratrees_increment_frac_0.5',
-        'mondrian_skgarden',
-        'mondrian_our'
+        # 'mondrian_skgarden',
+        'mondrian'
     ]
 
     fig, ax = plt.subplots(1, 3, figsize=(25, 7))
@@ -111,10 +111,10 @@ def run_all_methods_on_dataset(dataset, name, n_iter, n_batches, n_estimators, m
     for method in methods:
 
         # problem with not enough labels
-        if name == 'satim' and method.startswith('classical_rf_increment'):
+        if name == 'satim' and method.startswith('classical_increment_frac_0'):
             continue
 
-        elif name == 'satim' and method.startswith('extratrees_rf_increment'):
+        elif name == 'satim' and method.startswith('extratrees_increment_frac_0'):
             continue
 
         print(f'\t{method}')
