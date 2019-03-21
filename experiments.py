@@ -121,7 +121,7 @@ def run_all_methods_on_dataset(dataset, name, n_iter, n_batches, n_estimators, m
         mean_fit_time, mean_train_acc, mean_test_acc = run_method_on_dataset(method, dataset, n_iter, n_batches,
                                                                              n_estimators, max_depth)
 
-        ax[0].plot(np.arange(n_batches)/100, mean_test_acc, label=method, marker='o', linewidth=4)
+        ax[0].plot(np.arange(n_batches)/ n_batches, mean_test_acc, label=method, marker='o', linewidth=4)
         ax[0].set(xlabel='fraction of training data', ylabel='test accuracy', title='Test accuracy and fraction of data')
 
         ax[1].plot(mean_fit_time, mean_test_acc, label=method, marker='o', linewidth=4)
